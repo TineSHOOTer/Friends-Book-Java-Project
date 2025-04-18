@@ -16,6 +16,7 @@ public class Menu {
 		Scanner input = new Scanner(System.in);
 		String selection = "";
 		DataStorage data = new SQL_Database();
+		data.show2post(fromuserid);
 		
 		while(!selection.equals("x"))  //while not x, keep displaying the menu
 		{
@@ -32,7 +33,8 @@ public class Menu {
 		selection= input.nextLine();
 		
 		if(selection.equals("1")) {
-//			new SelectPost(data).
+			data.showFriendsPosts(fromuserid);
+
 		}
 		else if(selection.equals("2"))
 		{
@@ -40,7 +42,7 @@ public class Menu {
 			getnotification();
 		}
 		else if(selection.equals("3")) {
-//			new CreatePost(data).
+			new UserPost(fromuserid).post();
 		}
 		else if(selection.equals("4")) {
 			friends();

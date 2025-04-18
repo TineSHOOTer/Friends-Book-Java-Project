@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -158,92 +159,6 @@ public class SQL_Database implements DataStorage {
 	public void getPendingNotifications(String toUserId) {
 	    PreparedStatement statement = null;
 	    Scanner scanner = new Scanner(System.in);
-
-//	    try {
-//	        connection = DriverManager.getConnection(DATABASE_URL, db_id, db_psw);
-//
-//	        String query = "SELECT * FROM notifications WHERE user_id_2 = ? AND status = 'Pending'";
-//	        statement = connection.prepareStatement(query);
-//	        statement.setString(1, toUserId);
-//	        resultSet = statement.executeQuery();
-//
-//	        Map<Integer, String> notificationMap = new HashMap<>();
-//	        int index = 1;
-//
-//	        while (resultSet.next()) {
-//	            String fromUser = resultSet.getString("user_id_1");
-//	            int notificationId = resultSet.getInt("notification_id"); // assuming primary key column
-//	            notificationMap.put(index, fromUser);
-//
-//	            System.out.println(index + ". Friend Request from: " + fromUser);
-//	            index++;
-//	        }
-//
-//	        if (notificationMap.isEmpty()) {
-//	            System.out.println("-----No new notifications-----");
-//	            return;
-//	        }
-//
-//	        // Prompt to accept or reject each one
-//	        for (Map.Entry<Integer, String> entry : notificationMap.entrySet()) {
-//	            int option = entry.getKey();
-//	            String fromUser = entry.getValue();
-//
-//	            System.out.print("[" + option + "] Accept or Reject friend request from " + fromUser + "? (yes/no): ");
-//	            String choice = scanner.nextLine().trim().toLowerCase();
-//
-//	            // Get notification ID again
-//	            String getIdQuery = "SELECT notification_id FROM notifications WHERE user_id_1 = ? AND user_id_2 = ? AND status = 'Pending'";
-//	            PreparedStatement idStmt = connection.prepareStatement(getIdQuery);
-//	            idStmt.setString(1, fromUser);
-//	            idStmt.setString(2, toUserId);
-//	            ResultSet idResult = idStmt.executeQuery();
-//
-//	            if (idResult.next()) {
-//	                int notificationId = idResult.getInt("notification_id");
-//
-//	                if (choice.equals("yes")) {
-//	                    // Accept: insert into friends
-//	                    PreparedStatement insertStmt = connection.prepareStatement(
-//	                        "INSERT INTO friends(user_id_1, user_id_2) VALUES (?, ?)"
-//	                    );
-//	                    insertStmt.setString(1, fromUser);
-//	                    insertStmt.setString(2, toUserId);
-//	                    insertStmt.executeUpdate();
-//
-//	                    // Update status to Accepted
-//	                    PreparedStatement updateStmt = connection.prepareStatement(
-//	                        "UPDATE notifications SET status = 'Accepted' WHERE notification_id = ?"
-//	                    );
-//	                    updateStmt.setInt(1, notificationId);
-//	                    updateStmt.executeUpdate();
-//
-//	                    System.out.println("-----Accepted friend request-----");
-//	                } else {
-//	                    // Update status to Declined
-//	                    PreparedStatement updateStmt = connection.prepareStatement(
-//	                        "UPDATE notifications SET status = 'Declined' WHERE notification_id = ?"
-//	                    );
-//	                    updateStmt.setInt(1, notificationId);
-//	                    updateStmt.executeUpdate();
-//
-//	                    System.out.println("-----Declined friend request------");
-//	                }
-//	            }
-//	            idResult.close();
-//	        }
-//
-//	    } catch (Exception e) {
-//	        e.printStackTrace();
-//	    } finally {
-//	        try {
-//	            if (resultSet != null) resultSet.close();
-//	            if (statement != null) statement.close();
-//	            if (connection != null) connection.close();
-//	        } catch (Exception e) {
-//	            e.printStackTrace();
-//	        }
-//	    }
 	    
 	    try {
 	        connection = DriverManager.getConnection(DATABASE_URL, db_id, db_psw);
@@ -373,7 +288,7 @@ public class SQL_Database implements DataStorage {
 	    updateStmt.executeUpdate();
 	    updateStmt.close();
 	}
-	
+	@Override
 	public void SendUserMessage(String fromuserid, String touserid, String message) {
 		
 		try {
@@ -411,9 +326,11 @@ public class SQL_Database implements DataStorage {
             }
         }
 	}
+	@Override
 	public void getAllFriends(String userId) {
 	    PreparedStatement statement = null;
 	    ResultSet rs = null;
+	    Scanner scanner = new Scanner(System.in);
 
 	    try {
 	        connection = DriverManager.getConnection(DATABASE_URL, db_id, db_psw);
@@ -436,12 +353,25 @@ public class SQL_Database implements DataStorage {
 
 	        if (friends.isEmpty()) {
 	            System.out.println("❌ You have no friends yet.");
-	        } else {
-	            System.out.println("👥 Your Friends:");
-	            for (String friend : friends) {
-	                System.out.println("- " + friend);
-	            }
+	            return;
 	        }
+
+	        // Display friends with indexes
+	        System.out.println("👥 Select a friend to view profile:");
+	        for (int i = 0; i < friends.size(); i++) {
+	            System.out.println((i + 1) + ". " + friends.get(i));
+	        }
+
+	        System.out.print("Enter number (0 to cancel): ");
+	        int choice = Integer.parseInt(scanner.nextLine());
+
+	        if (choice < 1 || choice > friends.size()) {
+	            System.out.println("❌ Invalid choice or cancelled.");
+	            return;
+	        }
+
+	        String selectedFriendId = friends.get(choice - 1);
+	        showUserProfile(selectedFriendId);
 
 	    } catch (Exception e) {
 	        e.printStackTrace();
@@ -455,6 +385,264 @@ public class SQL_Database implements DataStorage {
 	        }
 	    }
 	}
+
+	private void showUserProfile(String userId) {
+	    PreparedStatement stmt = null;
+	    ResultSet rs = null;
+
+	    try {
+	        connection = DriverManager.getConnection(DATABASE_URL, db_id, db_psw);
+
+	        String query = "SELECT * FROM User_Profile WHERE user_id = ?";
+	        stmt = connection.prepareStatement(query);
+	        stmt.setString(1, userId);
+	        rs = stmt.executeQuery();
+
+	        if (rs.next()) {
+	            System.out.println("\n📄 Friend Profile:");
+	            System.out.println("User ID  : " + rs.getString("user_id"));
+	            System.out.println("Gender   : " + rs.getString("gender"));
+	            System.out.println("Age      : " + rs.getString("age"));
+	            System.out.println("School   : " + rs.getString("school"));
+	        } else {
+	            System.out.println("⚠ No profile found.");
+	        }
+
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	    } finally {
+	        try {
+	            if (rs != null) rs.close();
+	            if (stmt != null) stmt.close();
+	            if (connection != null) connection.close();
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	        }
+	    }
+	}
+
+	@Override
+	public void userpost(String userid, String post, String hashtag) {
+		PreparedStatement statement = null;
+		try {
+			connection = DriverManager.getConnection(DATABASE_URL, db_id, db_psw);
+            String s = DateAndTime.DateTime();
+            connection.setAutoCommit(false);
+
+			String query="insert into post(user_id, content, Hashtag, created_at) values(?,?,?,?)";
+			statement = connection.prepareStatement(query);
+			statement.setString(1, userid);
+			statement.setString(2, post);
+			statement.setString(3, hashtag);
+			statement.setString(4, s);
+
+			int rowsInserted = statement.executeUpdate();
+	        connection.commit();
+
+	        if (rowsInserted > 0) {
+	            System.out.println("✔ Post created successfully.");
+	        }
+
+	        // Show all posts of the user
+	        String fetchQuery = "SELECT * FROM post WHERE user_id = ? ORDER BY created_at DESC";
+	        statement = connection.prepareStatement(fetchQuery);
+	        statement.setString(1, userid);
+	        resultSet = statement.executeQuery();
+
+	        System.out.println("\n📜 Your Posts:");
+	        while (resultSet.next()) {
+	            String content = resultSet.getString("content");
+	            String tag = resultSet.getString("Hashtag");
+	            String time = resultSet.getString("created_at");
+
+	            System.out.println("[" + time + "] " + content + " #" + tag +"");
+            
+	        }
+		}
+		catch (Exception e) {
+	        e.printStackTrace();
+	    } finally {
+	        try {
+	            if (resultSet != null) resultSet.close();
+	            if (statement != null) statement.close();
+	            if (connection != null) connection.close();
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	        }
+	    }
+	}
+	@Override
+	public void showFriendsPosts(String currentUserId) {
+	    PreparedStatement stmt = null ,commentStmt = null, insertCommentStmt = null;
+	    ResultSet rs = null, commentRs= null;
+	    Scanner scanner= new Scanner(System.in);
+
+	    try {
+	        connection = DriverManager.getConnection(DATABASE_URL, db_id, db_psw);
+
+	        // SQL to fetch posts from friends (bidirectional)
+	        String sql = """
+	            SELECT p.post_id,p.user_id, p.content, p.Hashtag, p.created_at
+	            FROM post p
+	            JOIN (
+	                SELECT user_id_1 AS friend_id FROM friends WHERE user_id_2 = ?
+	                UNION
+	                SELECT user_id_2 AS friend_id FROM friends WHERE user_id_1 = ?
+	            ) f ON p.user_id = f.friend_id
+	            ORDER BY p.created_at DESC
+	        """;
+
+	        stmt = connection.prepareStatement(sql);
+	        stmt.setString(1, currentUserId);
+	        stmt.setString(2, currentUserId);
+	        rs = stmt.executeQuery();
+
+	        System.out.println("📢 Posts from Your Friends:");
+	        boolean hasPosts = false;
+
+	        while (rs.next()) {
+	            hasPosts = true;
+	            int postId = rs.getInt("post_id");
+	            String userId = rs.getString("user_id");
+	            String content = rs.getString("content");
+	            String tag = rs.getString("Hashtag");
+	            String time = rs.getString("created_at");
+
+	            System.out.println("[" + time + "] " + userId + ": " + content+ "  " + tag+ "");
+	            String commentQuery = "SELECT user_id, comments, created_at FROM comments WHERE post_id = ? ORDER BY created_at";
+	            commentStmt = connection.prepareStatement(commentQuery);
+	            commentStmt.setInt(1, postId);
+	            commentRs = commentStmt.executeQuery();
+	            
+	            while (commentRs.next()) {
+	                String commenter = commentRs.getString("user_id");
+	                String comment = commentRs.getString("comments");
+	                String commentTime = commentRs.getString("created_at");
+
+	                System.out.println("   💬 [" + commentTime + "] " + commenter + ": " + comment);
+	            }
+
+	            System.out.print("→ Do you want to comment on this post? (yes/no): ");
+	            String answer = scanner.nextLine().trim().toLowerCase();
+	            if (answer.equals("yes")) {
+	                System.out.print("Write your comment: ");
+	                String commentText = scanner.nextLine();
+	                String s = DateAndTime.DateTime();
+
+	                String insertComment = "INSERT INTO comments (post_id, user_id, comments, created_at) VALUES (?, ?, ?, ?)";
+	                insertCommentStmt = connection.prepareStatement(insertComment);
+	                insertCommentStmt.setInt(1, postId);
+	                insertCommentStmt.setString(2, currentUserId);
+	                insertCommentStmt.setString(3, commentText);
+	                insertCommentStmt.setString(4, s);
+	                insertCommentStmt.executeUpdate();
+
+	                System.out.println("✅ Comment added!");
+	            }
+	            System.out.println(); // space between posts
+	        }
+	        
+
+	        if (!hasPosts) {
+	            System.out.println("No posts from friends yet.");
+	        }
+
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	    } finally {
+	        try {
+	            if (rs != null) rs.close();
+	            if (stmt != null) stmt.close();
+	            if (connection != null) connection.close();
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	        }
+	    }
+	}
+
+	public void show2post(String userid) {
+	    PreparedStatement stmt = null, commentStmt = null;
+	    ResultSet rs = null;
+	    Scanner scanner = new Scanner(System.in);
+
+	    try {
+	        connection = DriverManager.getConnection(DATABASE_URL, db_id, db_psw);
+
+	        String sql = """
+	            SELECT p.post_id, p.user_id, p.content, p.Hashtag, p.created_at
+	            FROM post p
+	            JOIN (
+	                SELECT user_id_1 AS friend_id FROM friends WHERE user_id_2 = ?
+	                UNION
+	                SELECT user_id_2 AS friend_id FROM friends WHERE user_id_1 = ?
+	            ) f ON p.user_id = f.friend_id
+	        """;
+
+	        stmt = connection.prepareStatement(sql);
+	        stmt.setString(1, userid);
+	        stmt.setString(2, userid);
+	        rs = stmt.executeQuery();
+
+	        // Store posts in a list
+	        List<Map<String, String>> posts = new ArrayList<>();
+
+	        while (rs.next()) {
+	            Map<String, String> post = new HashMap<>();
+	            post.put("post_id", rs.getString("post_id"));
+	            post.put("user_id", rs.getString("user_id"));
+	            post.put("content", rs.getString("content"));
+	            post.put("Hashtag", rs.getString("Hashtag"));
+	            post.put("created_at", rs.getString("created_at"));
+	            posts.add(post);
+	        }
+
+	        if (posts.isEmpty()) {
+	            System.out.println("No posts from friends yet.");
+	            return;
+	        }
+
+	        // Shuffle and pick up to 2 posts
+	        Collections.shuffle(posts);
+	        int limit = Math.min(2, posts.size());
+
+	        for (int i = 0; i < limit; i++) {
+	            Map<String, String> post = posts.get(i);
+	            System.out.println("[" + post.get("created_at") + "] " + post.get("user_id") + ": " + post.get("content") + " " + post.get("Hashtag"));
+
+	            // Comment prompt
+	            System.out.print("💬 Do you want to comment on this post? (yes/no): ");
+	            String choice = scanner.nextLine().trim().toLowerCase();
+	            if (choice.equals("yes")) {
+	                System.out.print("✍ Enter your comment: ");
+	                String comment = scanner.nextLine();
+
+	                String insertComment = "INSERT INTO comments (post_id, user_id, comment_text) VALUES (?, ?, ?)";
+	                commentStmt = connection.prepareStatement(insertComment);
+	                commentStmt.setInt(1, Integer.parseInt(post.get("post_id")));
+	                commentStmt.setString(2, userid);
+	                commentStmt.setString(3, comment);
+	                commentStmt.executeUpdate();
+
+	                System.out.println("✅ Comment added!");
+	            }
+	            System.out.println(); // spacing between posts
+	        }
+
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	    } finally {
+	        try {
+	            if (rs != null) rs.close();
+	            if (stmt != null) stmt.close();
+	            if (commentStmt != null) commentStmt.close();
+	            if (connection != null) connection.close();
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	        }
+	    }
+	}
+
+	
 
 }
 	
