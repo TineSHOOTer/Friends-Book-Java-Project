@@ -615,12 +615,14 @@ public class SQL_Database implements DataStorage {
 	            if (choice.equals("yes")) {
 	                System.out.print("✍ Enter your comment: ");
 	                String comment = scanner.nextLine();
+	                String s = DateAndTime.DateTime();
 
-	                String insertComment = "INSERT INTO comments (post_id, user_id, comment_text) VALUES (?, ?, ?)";
+	                String insertComment = "INSERT INTO comments (post_id, user_id, comments, created_at) VALUES (?, ?, ?, ?)";
 	                commentStmt = connection.prepareStatement(insertComment);
 	                commentStmt.setInt(1, Integer.parseInt(post.get("post_id")));
 	                commentStmt.setString(2, userid);
 	                commentStmt.setString(3, comment);
+	                commentStmt.setString(4, s);
 	                commentStmt.executeUpdate();
 
 	                System.out.println("✅ Comment added!");
@@ -640,6 +642,103 @@ public class SQL_Database implements DataStorage {
 	            e.printStackTrace();
 	        }
 	    }
+	}
+	
+	
+	    public void seeHashtagTrends(String currentUserId) {
+	        Scanner scanner = new Scanner(System.in);
+	        PreparedStatement stmt = null;
+	        ResultSet rs = null;
+
+	        try {
+	            connection = DriverManager.getConnection(DATABASE_URL, db_id, db_psw);
+
+	            // Step 1: Get top 2 trending hashtags
+	            String trendQuery = """
+	                SELECT Hashtag, COUNT(*) AS count
+	                FROM post
+	                WHERE Hashtag IS NOT NULL AND Hashtag <> ''
+	                GROUP BY Hashtag
+	                ORDER BY count DESC
+	            """;
+
+	            stmt = connection.prepareStatement(trendQuery);
+	            rs = stmt.executeQuery();
+
+	            List<String> trending = new ArrayList<>();
+	            System.out.println("Top Trending Hashtags:");
+	            int count = 0;
+	            while (rs.next() && count < 2) {
+	                String hashtag = rs.getString("Hashtag");
+	                System.out.println((count + 1) + ". " + hashtag);
+	                trending.add(hashtag);
+	                count++;
+	            }
+
+	            if (trending.isEmpty()) {
+	                System.out.println("No trending hashtags available.");
+	                return;
+	            }
+
+	            // Step 2: Let user select or enter custom hashtag
+	            System.out.print("Select a hashtag by number or type a new one: ");
+	            String input = scanner.nextLine().trim();
+
+	            String selectedHashtag;
+	            
+	            if (input.matches("\\d") && Integer.parseInt(input) <= trending.size()) {
+	                selectedHashtag = trending.get(Integer.parseInt(input) - 1);
+	            } else {
+	                selectedHashtag = input;
+	            }
+
+	            // Step 3: Fetch and show friend posts with that hashtag
+	            String postQuery = """
+	                SELECT p.user_id, p.content, p.created_at
+	                FROM post p
+	                JOIN (
+	                    SELECT user_id_1 AS friend_id FROM friends WHERE user_id_2 = ?
+	                    UNION
+	                    SELECT user_id_2 AS friend_id FROM friends WHERE user_id_1 = ?
+	                ) f ON p.user_id = f.friend_id
+	                WHERE p.Hashtag = ?
+	                ORDER BY p.created_at DESC
+	            """;
+
+	            stmt = connection.prepareStatement(postQuery);
+	            stmt.setString(1, currentUserId);
+	            stmt.setString(2, currentUserId);
+	            stmt.setString(3, selectedHashtag);
+	            rs = stmt.executeQuery();
+
+	            System.out.println("📢 Posts from friends using #" + selectedHashtag + ":");
+	            boolean found = false;
+	            while (rs.next()) {
+	                found = true;
+	                String uid = rs.getString("user_id");
+	                String content = rs.getString("content");
+	                String time = rs.getString("created_at");
+
+	                System.out.println("[" + time + "] " + uid + ": " + content);
+	            }
+
+	            if (!found) {
+	                System.out.println("No posts found with that hashtag.");
+	            }
+
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	        } finally {
+	            try {
+	                if (rs != null) rs.close();
+	                if (stmt != null) stmt.close();
+	                if (connection != null) connection.close();
+	            } catch (Exception e) {
+	                e.printStackTrace();
+	            }
+	        }
+	    
+
 	}
 
 	

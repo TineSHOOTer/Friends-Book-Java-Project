@@ -54,7 +54,7 @@ public class Menu {
 			friendrequest();
 		}
 		else if(selection.equals("7")) {
-//			new CreatePost(data).
+			new HashTag(fromuserid).hashtagtrends();
 		}
 		}
 		

@@ -12,5 +12,6 @@ public interface DataStorage {
 	void userpost(String userid, String post, String hashtag);
 	void showFriendsPosts(String currentUserId);
 	void show2post(String userid);
+	void seeHashtagTrends(String currentUserId);
 	
 }
